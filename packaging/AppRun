@@ -1,0 +1,18 @@
+#!/bin/sh
+# AppImage entry point. Bundled GObject-Introspection typelibs (from PyGObject)
+# and libraries must be discoverable before launching the PyInstaller binary.
+HERE="$(dirname "$(readlink -f "$0")")"
+APPDIR="${APPDIR:-$HERE}"
+export APPDIR
+
+# PyInstaller onedir keeps its payload in _internal next to the executable.
+BIN="$APPDIR/usr/bin/docker-local-management"
+
+# Help the frozen app find bundled gi typelibs / shared libs if linuxdeploy
+# relocated them into usr/lib.
+if [ -d "$APPDIR/usr/lib/girepository-1.0" ]; then
+    export GI_TYPELIB_PATH="$APPDIR/usr/lib/girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
+fi
+export LD_LIBRARY_PATH="$APPDIR/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+exec "$BIN" "$@"

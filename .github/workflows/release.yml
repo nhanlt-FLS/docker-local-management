@@ -1,0 +1,63 @@
+name: Release
+
+# A new desktop build is published whenever a version tag (v*) is pushed.
+# The running app checks these Releases on startup and self-updates.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    name: Build Linux AppImage
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches VERSION file
+        run: |
+          FILE_VERSION="$(tr -d '[:space:]' < VERSION)"
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$FILE_VERSION" != "$TAG" ]; then
+            echo "::error::VERSION ($FILE_VERSION) does not match pushed tag ($TAG)"
+            exit 1
+          fi
+          echo "Building version $TAG"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies (WebKitGTK + GObject introspection)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.0-dev \
+            libgirepository1.0-dev \
+            gir1.2-webkit2-4.0 \
+            librsvg2-bin \
+            imagemagick
+
+      - name: Build AppImage
+        run: |
+          chmod +x build_desktop.sh
+          ./build_desktop.sh
+        env:
+          ARCH: x86_64
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*.AppImage'
+          generate_release_notes: true
+          fail_on_unmatched_files: true

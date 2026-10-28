@@ -1,0 +1,4 @@
+# Dependencies needed only to build/run the packaged desktop app (app.py).
+# server.py itself stays dependency-free (standard library only).
+pywebview>=5.1
+pyinstaller>=6.6

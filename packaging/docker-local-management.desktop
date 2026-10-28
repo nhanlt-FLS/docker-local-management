@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Docker Local Management
+GenericName=Docker Manager
+Comment=Manage local Docker containers, images, volumes and networks
+Exec=docker-local-management
+Icon=docker-local-management
+Terminal=false
+Categories=Development;System;Utility;
+Keywords=docker;container;devops;
+StartupWMClass=docker-local-management

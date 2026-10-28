@@ -29,7 +29,9 @@ DOCKER_SOCKET = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8420"))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PUBLIC_DIR = os.path.join(BASE_DIR, "public")
+# PUBLIC_DIR can be overridden (the packaged desktop app points it at the
+# bundled copy of ./public extracted next to the frozen executable).
+PUBLIC_DIR = os.environ.get("PUBLIC_DIR") or os.path.join(BASE_DIR, "public")
 
 MIME_TYPES = {
     ".html": "text/html; charset=utf-8",

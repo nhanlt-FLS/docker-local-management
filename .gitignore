@@ -18,6 +18,10 @@ public/assets/*.map
 
 # PyInstaller / desktop packaging
 build/
+dist/
+AppDir/
+squashfs-root/
+appimagetool-squashfs-root/
 *.spec.bak
 *.AppImage
 *.AppImage.zsync

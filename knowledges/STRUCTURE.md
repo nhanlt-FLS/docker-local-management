@@ -24,6 +24,14 @@ docker_local_management/
 │   ├── index.html
 │   └── assets/             Hashed JS/CSS bundles + source maps
 ├── server.py               Dependency-free Python HTTP server + Docker proxy
+├── app.py                  Desktop entry point: embeds server.py in a pywebview window
+├── updater.py              GitHub-Releases self-update helper (stdlib only)
+├── VERSION                 Single source of truth for the app version (e.g. 0.1.0)
+├── desktop.spec            PyInstaller spec (onedir bundle of app.py + gi/webview)
+├── requirements-desktop.txt  pywebview + pyinstaller (server.py stays dependency-free)
+├── build_desktop.sh        Build frontend → PyInstaller → AppImage (used by CI too)
+├── packaging/              AppImage scaffolding: AppRun, .desktop, icon.png
+├── .github/workflows/      release.yml — builds + publishes an AppImage on v* tags
 ├── knowledges/             These documentation files
 └── .qoder/skills/          Maintained architecture/feature/react maps
 ```
@@ -135,6 +143,8 @@ Run from the project root:
 | `npm --prefix frontend run check` | typecheck + lint + format:check |
 | `npm --prefix frontend run build` | typecheck + Vite build into `../public` |
 | `python3 server.py` | Serve `public/` and proxy `/api/*` to Docker (default `127.0.0.1:8420`) |
+| `python3 app.py` | Run the desktop app (native pywebview window; needs `pip install pywebview`) |
+| `./build_desktop.sh` | Build frontend + PyInstaller + AppImage into `docker-local-management-<ver>-<arch>.AppImage` |
 
 Environment overrides: `HOST`, `PORT`, `DOCKER_SOCKET`, `DF_CACHE_TTL` (server);
 `DOCKER_UI_BACKEND` (Vite dev proxy target).
@@ -169,3 +179,31 @@ main.tsx → React app → Vite production build → public/
 browser → server.py static handler → public/assets/*
 browser /api/* → server.py → /var/run/docker.sock → Docker Engine
 ```
+
+## Desktop App & Auto-Update
+
+The web app is also shipped as an installable Linux **AppImage**.
+
+```text
+app.py
+  ├─ pick_port()      prefers 8420, else an OS-assigned free port
+  ├─ start_server()   sets PUBLIC_DIR to the bundled public/, imports server,
+  │                   runs server.Handler in a ThreadingHTTPServer daemon thread
+  ├─ wait_ready()     polls /api/_health before opening the window
+  ├─ webview window   native pywebview (WebKitGTK) pointing at 127.0.0.1:<port>
+  └─ updater          after load, checks GitHub Releases; prompts + self-updates
+```
+
+- **Version source of truth:** the `VERSION` file (bundled via `desktop.spec`).
+  `updater.py` compares it against the latest GitHub Release `tag_name`.
+- **Packaging:** `build_desktop.sh` builds the frontend, runs PyInstaller
+  (`desktop.spec`, onedir), assembles an `AppDir` (`packaging/AppRun`,
+  `.desktop`, `icon.png`) and packs it with `appimagetool` (extracted, so no
+  FUSE is needed in CI).
+- **Release / auto-update loop:** pushing a `v*` tag runs
+  `.github/workflows/release.yml`, which rebuilds the AppImage and attaches it
+  to a GitHub Release. On next launch the running app detects the newer tag,
+  downloads the new `.AppImage`, atomically replaces the file at `$APPIMAGE`
+  and re-execs itself. The tag must equal the `VERSION` file or CI fails fast.
+- **Runtime requirement:** the target machine needs WebKitGTK
+  (`libwebkit2gtk-4.0` or `4.1`) present, which pywebview uses to render.
