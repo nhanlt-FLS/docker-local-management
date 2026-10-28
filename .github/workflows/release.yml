@@ -11,6 +11,7 @@ permissions:
   contents: write
 
 jobs:
+  # ------------------------------------------------------------------ Linux --
   appimage:
     name: Build Linux AppImage
     runs-on: ubuntu-22.04
@@ -65,4 +66,72 @@ jobs:
             docker-local-management-*.AppImage
             install-docker-local-management.sh
           generate_release_notes: true
+          fail_on_unmatched_files: true
+
+  # ---------------------------------------------------------------- Windows --
+  windows:
+    name: Build Windows exe + installer
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches VERSION file
+        shell: pwsh
+        run: |
+          $file = (Get-Content VERSION -Raw).Trim()
+          $tag  = "${{ github.ref_name }}" -replace '^v',''
+          if ($file -ne $tag) {
+            Write-Error "VERSION ($file) does not match pushed tag ($tag)"
+            exit 1
+          }
+          "APP_VERSION=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build frontend
+        shell: pwsh
+        run: |
+          Push-Location frontend
+          npm ci
+          npm run build
+          Pop-Location
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build portable exe
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean desktop.spec
+          $ver = "${{ github.ref_name }}" -replace '^v',''
+          Copy-Item "dist\docker-local-management.exe" "docker-local-management-$ver-win64.exe"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { $iscc = (Get-Command iscc).Source }
+          & $iscc "packaging\windows-installer.iss"
+          $ver = "${{ github.ref_name }}" -replace '^v',''
+          Copy-Item "setup-output\docker-local-management-setup-$ver.exe" "."
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            docker-local-management-*-win64.exe
+            docker-local-management-setup-*.exe
           fail_on_unmatched_files: true

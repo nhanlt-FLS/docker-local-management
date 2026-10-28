@@ -28,6 +28,36 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 DOCKER_SOCKET = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8420"))
+
+# Docker endpoint. Honors DOCKER_HOST like the official client:
+#   tcp://host:port  -> plain HTTP (Docker Desktop on Windows/macOS)
+#   unix:///path     -> unix domain socket (Linux default)
+# When unset, Windows falls back to Docker Desktop's TCP endpoint and every
+# other platform to the local unix socket.
+DOCKER_HOST = os.environ.get("DOCKER_HOST", "").strip()
+
+
+def _default_docker_endpoint():
+    if DOCKER_HOST:
+        return DOCKER_HOST
+    if sys.platform == "win32":
+        return "tcp://127.0.0.1:2375"
+    return "unix://%s" % DOCKER_SOCKET
+
+
+def _parse_endpoint(endpoint):
+    """Return (kind, tcp_host, tcp_port, unix_path)."""
+    if endpoint.startswith("tcp://"):
+        netloc = endpoint[len("tcp://"):]
+        host, _, port = netloc.partition(":")
+        return ("tcp", host or "127.0.0.1", int(port or 2375), None)
+    if endpoint.startswith("unix://"):
+        return ("unix", None, None, endpoint[len("unix://"):])
+    return ("unix", None, None, endpoint)  # bare path == unix socket
+
+
+DOCKER_ENDPOINT = _default_docker_endpoint()
+ENDPOINT_KIND, TCP_HOST, TCP_PORT, UNIX_PATH = _parse_endpoint(DOCKER_ENDPOINT)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # PUBLIC_DIR can be overridden (the packaged desktop app points it at the
 # bundled copy of ./public extracted next to the frozen executable).
@@ -98,13 +128,20 @@ class StreamDemuxer:
         return out
 
 
+def docker_connection(timeout=60):
+    """Build a connection to the configured Docker endpoint (tcp or unix)."""
+    if ENDPOINT_KIND == "tcp":
+        return http.client.HTTPConnection(TCP_HOST, TCP_PORT, timeout=timeout)
+    return UnixHTTPConnection(UNIX_PATH, timeout=timeout)
+
+
 def docker_request(method, url, body=None, headers=None, timeout=60):
-    """Open a connection to the Docker socket and issue a request.
+    """Open a connection to the Docker endpoint and issue a request.
 
     Returns the (connection, HTTPResponse) pair. The caller is responsible for
     closing the connection.
     """
-    conn = UnixHTTPConnection(DOCKER_SOCKET, timeout=timeout)
+    conn = docker_connection(timeout=timeout)
     hdrs = {"Host": "docker.localhost", "Accept": "*/*"}
     if headers:
         hdrs.update(headers)
@@ -439,21 +476,41 @@ class Handler(BaseHTTPRequestHandler):
 # --------------------------------------------------------------------------- #
 # Entry point
 # --------------------------------------------------------------------------- #
+def _check_endpoint():
+    """Sanity-check the configured Docker endpoint before serving."""
+    if ENDPOINT_KIND == "unix":
+        if not os.path.exists(UNIX_PATH):
+            print("Docker socket not found at %s" % UNIX_PATH, file=sys.stderr)
+            print("Is Docker running? Set DOCKER_HOST/DOCKER_SOCKET to override.",
+                  file=sys.stderr)
+            sys.exit(1)
+        if not os.access(UNIX_PATH, os.R_OK | os.W_OK):
+            print("Warning: no read/write access to %s (are you in the 'docker' group?)"
+                  % UNIX_PATH, file=sys.stderr)
+    else:
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.settimeout(2)
+        try:
+            probe.connect((TCP_HOST, TCP_PORT))
+        except OSError:
+            print("Cannot reach Docker at tcp://%s:%d" % (TCP_HOST, TCP_PORT),
+                  file=sys.stderr)
+            print("On Windows enable 'Expose daemon on tcp://localhost:2375' in "
+                  "Docker Desktop settings, or set DOCKER_HOST.", file=sys.stderr)
+            sys.exit(1)
+        finally:
+            probe.close()
+
+
 def main():
-    if not os.path.exists(DOCKER_SOCKET):
-        print("Docker socket not found at %s" % DOCKER_SOCKET, file=sys.stderr)
-        print("Is Docker running? Set DOCKER_SOCKET to override.", file=sys.stderr)
-        sys.exit(1)
-    if not os.access(DOCKER_SOCKET, os.R_OK | os.W_OK):
-        print("Warning: no read/write access to %s (are you in the 'docker' group?)"
-              % DOCKER_SOCKET, file=sys.stderr)
+    _check_endpoint()
 
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     httpd.daemon_threads = True
     url = "http://%s:%d" % (HOST, PORT)
     print("Local Docker Management")
-    print("  UI:      %s" % url)
-    print("  Socket:  %s" % DOCKER_SOCKET)
+    print("  UI:       %s" % url)
+    print("  Endpoint: %s" % DOCKER_ENDPOINT)
     print("  Press Ctrl+C to stop.")
     try:
         httpd.serve_forever()

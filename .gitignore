@@ -23,6 +23,8 @@ AppDir/
 squashfs-root/
 appimagetool-squashfs-root/
 tools/
+setup-output/
+*.exe
 *.spec.bak
 *.AppImage
 *.AppImage.zsync

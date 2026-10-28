@@ -212,3 +212,26 @@ app.py
   and re-execs itself. The tag must equal the `VERSION` file or CI fails fast.
 - **Runtime requirement:** the target machine needs WebKitGTK
   (`libwebkit2gtk-4.0` or `4.1`) present, which pywebview uses to render.
+
+### Windows support
+
+- **Docker transport:** `server.py` honors `DOCKER_HOST` (`tcp://host:port` or
+  `unix:///path`). Default on Windows is `tcp://127.0.0.1:2375` (Docker Desktop
+  must expose the daemon); elsewhere the unix socket. `docker_connection()`
+  picks `http.client.HTTPConnection` (tcp) or `UnixHTTPConnection` (unix).
+- **Window:** `app.py` branches on `sys.platform`. Linux uses pywebview;
+  Windows launches Edge/Chrome in `--app=` mode with a dedicated
+  `--user-data-dir` (a distinct process, so `proc.wait()` keeps the embedded
+  server alive until the window closes). Update confirm on Windows uses a
+  `ctypes` `MessageBoxW`.
+- **Packaging:** `desktop.spec` is platform-aware — onedir + gi/webview on
+  Linux, onefile portable `.exe` (no webview/gi) on Windows.
+- **Auto-update on Windows:** a running `.exe` is locked, so `updater.py`
+  stages `<exe>.update.exe`, writes a `_update_swap.bat` that waits for the PID
+  to exit then moves + relaunches, and returns `"staged"` so `app.py` quits.
+  Release assets are per-platform (`.AppImage` vs `-win64.exe`); installer
+  artifacts (`setup`) are excluded from update selection.
+- **CI:** `.github/workflows/release.yml` has a `windows-latest` job that builds
+  the portable exe and an Inno Setup installer
+  (`packaging/windows-installer.iss`, per-user install into `%LocalAppData%` so
+  self-update needs no admin), publishing both alongside the Linux AppImage.

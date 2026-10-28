@@ -2,30 +2,39 @@
 """
 Desktop entry point for Local Docker Management.
 
-Wraps the existing dependency-free server.py in a native pywebview window so the
-project can be shipped as a single installable AppImage:
+Wraps the existing dependency-free server.py in a desktop window so the project
+can be shipped as an installable app with auto-update:
 
-  * picks a free local port (prefers 8420),
-  * starts server.py's HTTP handler in a background daemon thread,
-  * waits until /api/_health answers, then opens the window on that URL,
-  * checks GitHub Releases for a newer version and offers to self-update.
+  * Linux   -> native pywebview (WebKitGTK) window, packaged as an AppImage.
+  * Windows -> a Chromium "app mode" window (Edge/Chrome, no address bar),
+               packaged as a .exe. A dedicated browser profile is used so the
+               browser process lives exactly as long as the window, which keeps
+               the embedded server alive.
+
+In both cases we:
+  * pick a free local port (prefers 8420),
+  * start server.py's HTTP handler in a background daemon thread,
+  * wait until /api/_health answers, then open the window on that URL,
+  * check GitHub Releases for a newer version and offer to self-update.
 
 Run from source with:  python3 app.py
 """
 
 import os
+import shutil
 import socket
+import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.request
 from http.server import ThreadingHTTPServer
 
-import webview
-
 import updater
 
 APP_NAME = "Docker Local Management"
+IS_WINDOWS = sys.platform == "win32"
 PREFERRED_PORT = int(os.environ.get("PORT", "8420"))
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 860
@@ -85,7 +94,7 @@ def wait_ready(url, timeout=15.0):
 
 
 class Api:
-    """Small surface exposed to the web UI via window.pywebview.api."""
+    """Small surface exposed to the web UI via window.pywebview.api (Linux)."""
 
     def __init__(self, version):
         self._version = version
@@ -101,22 +110,116 @@ class Api:
         return {"available": True, "latest": tag, "url": url}
 
 
-def _maybe_offer_update(window, version):
-    """Runs after the page loads: prompt once if a newer release exists."""
-    window.events.loaded.wait()
+# --------------------------------------------------------------------------- #
+# Update prompt + apply (shared)
+# --------------------------------------------------------------------------- #
+def _check_and_apply(version, confirm):
+    """Offer an update if available. confirm(message) -> bool.
+
+    Returns updater.apply_update's status ("restarting"/"staged") or None/False.
+    """
     result = updater.check_for_update(version)
     if not result:
-        return
+        return None
     tag, url = result
     message = "Version %s is available (you are on %s).\n\nInstall now and restart?" % (
         tag,
         version,
     )
+    if not confirm(message):
+        return None
+    return updater.apply_update(url)
+
+
+# --------------------------------------------------------------------------- #
+# Linux: native pywebview window
+# --------------------------------------------------------------------------- #
+def _linux_update_watch(window, version):
+    window.events.loaded.wait()
+
+    def confirm(message):
+        return window.create_confirmation_dialog("Update available", message)
+
     try:
-        if window.create_confirmation_dialog("Update available", message):
-            updater.apply_update(url)
+        _check_and_apply(version, confirm)
     except Exception as exc:  # dialogs unsupported on some backends
         print("[app] update prompt failed: %s" % exc, file=sys.stderr)
+
+
+def _run_linux(url, version):
+    import webview
+
+    window = webview.create_window(
+        APP_NAME,
+        url,
+        js_api=Api(version),
+        width=WINDOW_WIDTH,
+        height=WINDOW_HEIGHT,
+        min_size=(940, 640),
+    )
+    # func runs in a background thread once the GUI loop is up.
+    webview.start(lambda: _linux_update_watch(window, version))
+
+
+# --------------------------------------------------------------------------- #
+# Windows: Chromium app-mode window
+# --------------------------------------------------------------------------- #
+def _confirm_windows(message):
+    import ctypes
+
+    MB_YESNO = 0x00000004
+    MB_ICONQUESTION = 0x00000020
+    IDYES = 6
+    result = ctypes.windll.user32.MessageBoxW(
+        0, message, "%s - Update" % APP_NAME, MB_YESNO | MB_ICONQUESTION
+    )
+    return result == IDYES
+
+
+def _find_browser():
+    """Locate Edge or Chrome for app-mode rendering."""
+    bases = [
+        os.environ.get("ProgramFiles(x86)", ""),
+        os.environ.get("ProgramFiles", ""),
+        os.environ.get("LocalAppData", ""),
+    ]
+    for base in bases:
+        if not base:
+            continue
+        for vendor, exe in (("Microsoft", "msedge.exe"), ("Google", "chrome.exe")):
+            candidate = os.path.join(base, vendor, "Edge" if vendor == "Microsoft" else "Chrome",
+                                     "Application", exe)
+            if os.path.isfile(candidate):
+                return candidate
+    for name in ("msedge.exe", "chrome.exe"):
+        found = shutil.which(name)
+        if found:
+            return found
+    return None
+
+
+def _run_windows(url, version):
+    # Offer an update before opening the window; a staged update relaunches us.
+    if _check_and_apply(version, _confirm_windows) == "staged":
+        sys.exit(0)
+
+    browser = _find_browser()
+    if not browser:
+        print("No Chromium browser found. Open %s manually; server stays up." % url,
+              file=sys.stderr)
+        while True:
+            time.sleep(1)
+
+    # A dedicated profile makes the browser a distinct process that exits when
+    # the app window closes, so we can keep the embedded server alive until then.
+    profile = tempfile.mkdtemp(prefix="dlm-browser-")
+    proc = subprocess.Popen([browser, "--app=" + url, "--user-data-dir=" + profile])
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        proc.terminate()
+    finally:
+        shutil.rmtree(profile, ignore_errors=True)
 
 
 def main():
@@ -129,17 +232,11 @@ def main():
     if not wait_ready(url):
         print("Warning: server did not report healthy in time", file=sys.stderr)
 
-    window = webview.create_window(
-        APP_NAME,
-        url,
-        js_api=Api(version),
-        width=WINDOW_WIDTH,
-        height=WINDOW_HEIGHT,
-        min_size=(940, 640),
-    )
     try:
-        # func runs in a background thread once the GUI loop is up.
-        webview.start(lambda: _maybe_offer_update(window, version))
+        if IS_WINDOWS:
+            _run_windows(url, version)
+        else:
+            _run_linux(url, version)
     finally:
         httpd.shutdown()
 

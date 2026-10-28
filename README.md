@@ -7,9 +7,11 @@ A lightweight, local Docker management UI (Docker Desktop–like) for Linux:
   socket (including streaming logs, stats, events and image pulls).
 - **Frontend** — a React 18 + TypeScript + Vite single-page app in `frontend/`,
   built into `public/`.
-- **Desktop app** — `app.py` wraps the server in a native
-  [pywebview](https://pywebview.flowrl.com/) window and is packaged as a single
-  installable **AppImage** with built-in **auto-update**.
+- **Desktop app** — `app.py` wraps the server in a native window and is packaged
+  as an installable app with built-in **auto-update**:
+  - **Linux** — pywebview (WebKitGTK) window, shipped as an **AppImage**.
+  - **Windows** — Chromium "app mode" window (Edge/Chrome), shipped as a
+    portable **`.exe`** plus an **Inno Setup installer**.
 
 ## Run from source
 
@@ -72,6 +74,24 @@ It will:
 
 Afterwards launch it from your app menu ("Docker Local Management") or run
 `docker-local-management`.
+
+## Windows
+
+Releases publish two Windows artifacts:
+
+- `docker-local-management-setup-<ver>.exe` — an Inno Setup installer (per-user,
+  no admin needed). Run it once to install + create shortcuts.
+- `docker-local-management-<ver>-win64.exe` — a portable single-file executable
+  (also the asset the auto-updater downloads).
+
+**Docker connection on Windows:** Docker Desktop does not expose a unix socket to
+the host, so the app talks to it over TCP. In Docker Desktop open
+**Settings → General** and enable **"Expose daemon on tcp://localhost:2375 without
+TLS"**, then restart Docker Desktop. (Or set `DOCKER_HOST=tcp://host:port`.)
+
+The window is rendered by Edge/Chrome in app mode (a clean window with no address
+bar); no extra runtime is required beyond a Chromium-based browser, which Windows
+10/11 always has.
 
 ## Auto-update & releasing a new version
 
