@@ -16,7 +16,9 @@ AppPublisher=nhanlt-FLS
 DefaultDirName={localappdata}\DockerLocalManagement
 DefaultGroupName={#MyAppName}
 PrivilegesRequired=lowest
-OutputDir=setup-output
+; Relative paths below resolve against this .iss file's directory (packaging/),
+; so the PyInstaller output one level up is ..\dist and output goes to repo root.
+OutputDir=..\setup-output
 OutputBaseFilename=docker-local-management-setup-{#MyAppVersion}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
@@ -30,7 +32,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional icons:"
 
 [Files]
-Source: "dist\docker-local-management.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
+Source: "..\dist\docker-local-management.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
