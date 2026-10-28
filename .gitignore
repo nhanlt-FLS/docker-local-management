@@ -22,6 +22,7 @@ dist/
 AppDir/
 squashfs-root/
 appimagetool-squashfs-root/
+tools/
 *.spec.bak
 *.AppImage
 *.AppImage.zsync

@@ -24,6 +24,11 @@ REPO = os.environ.get("UPDATE_REPO", "nhanlt-FLS/docker-local-management")
 API_URL = "https://api.github.com/repos/%s/releases/latest" % REPO
 USER_AGENT = "docker-local-management-updater"
 ASSET_SUFFIX = ".AppImage"
+# The published app asset is named docker-local-management-<ver>-<arch>.AppImage.
+# Pin the prefix and reject build-tool AppImages so we never download the wrong
+# file if a release accidentally ships extra .AppImage assets.
+APP_ASSET_PREFIX = "docker-local-management-"
+TOOL_ASSET_MARKERS = ("appimagetool", "linuxdeploy", "appstreamcli")
 TIMEOUT = 15
 
 
@@ -78,11 +83,21 @@ def fetch_latest_release():
     tag = data.get("tag_name")
     if not tag:
         return None
+    fallback = None
     for asset in data.get("assets", []) or []:
         name = asset.get("name", "")
-        if name.endswith(ASSET_SUFFIX):
-            return tag, asset.get("browser_download_url")
-    _log("release %s has no %s asset" % (tag, ASSET_SUFFIX))
+        if not name.endswith(ASSET_SUFFIX):
+            continue
+        url = asset.get("browser_download_url")
+        lowered = name.lower()
+        if any(marker in lowered for marker in TOOL_ASSET_MARKERS):
+            continue  # a packaging tool, not our app
+        if name.startswith(APP_ASSET_PREFIX):
+            return tag, url
+        fallback = fallback or url
+    if fallback:
+        return tag, fallback
+    _log("release %s has no %s app asset" % (tag, APP_ASSET_PREFIX))
     return None
 
 

@@ -66,23 +66,27 @@ cp packaging/icon.png "AppDir/${APP_NAME}.png"
 cp packaging/icon.png AppDir/.DirIcon
 
 echo "==> Fetching appimagetool"
-APPIMAGETOOL="appimagetool-${ARCH_TAG}.AppImage"
+# Keep build tools in a cache dir (never the repo root) so they can't be picked
+# up by the release workflow's asset glob.
+TOOLS_DIR="tools"
+mkdir -p "$TOOLS_DIR"
+APPIMAGETOOL="$TOOLS_DIR/appimagetool-${ARCH_TAG}.AppImage"
 if [ ! -f "$APPIMAGETOOL" ]; then
     curl -L --fail -o "$APPIMAGETOOL" \
-        "https://github.com/AppImage/AppImageKit/releases/download/continuous/${APPIMAGETOOL}"
+        "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH_TAG}.AppImage"
     chmod +x "$APPIMAGETOOL"
 fi
 
 # Extract rather than execute the tool so no FUSE kernel module is required
 # (GitHub Actions runners have no /dev/fuse).
 echo "==> Packing AppImage"
-rm -rf appimagetool-squashfs-root
-"./$APPIMAGETOOL" --appimage-extract >/dev/null
-mv squashfs-root appimagetool-squashfs-root
+rm -rf "$TOOLS_DIR/squashfs-root"
+"$APPIMAGETOOL" --appimage-extract >/dev/null
+mv squashfs-root "$TOOLS_DIR/squashfs-root"
 
 OUT="${APP_NAME}-${VERSION}-${ARCH_TAG}.AppImage"
 rm -f "$OUT"
-ARCH="$ARCH_TAG" ./appimagetool-squashfs-root/AppRun AppDir "$OUT"
+ARCH="$ARCH_TAG" "$TOOLS_DIR/squashfs-root/AppRun" AppDir "$OUT"
 
 echo "==> Done: $OUT"
 ls -lh "$OUT"
