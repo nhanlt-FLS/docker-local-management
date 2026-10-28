@@ -1,123 +1,146 @@
 # Docker Local Management
 
-A lightweight, local Docker management UI (Docker Desktop–like) for Linux:
+A lightweight, local **Docker management UI** (like Docker Desktop, but a small
+self-hosted app) for **Linux** and **Windows**. It shows containers, images,
+volumes, networks, live logs/stats/events and disk usage, and lets you run,
+stop, prune and inspect everything — all against your local Docker engine.
 
 - **Backend** — `server.py`, a dependency-free Python (stdlib-only) HTTP server
-  that serves the web UI and proxies `/api/*` to the Docker Engine over the unix
-  socket (including streaming logs, stats, events and image pulls).
-- **Frontend** — a React 18 + TypeScript + Vite single-page app in `frontend/`,
-  built into `public/`.
-- **Desktop app** — `app.py` wraps the server in a native window and is packaged
-  as an installable app with built-in **auto-update**:
-  - **Linux** — pywebview (WebKitGTK) window, shipped as an **AppImage**.
-  - **Windows** — Chromium "app mode" window (Edge/Chrome), shipped as a
-    portable **`.exe`** plus an **Inno Setup installer**.
+  that serves the web UI and proxies `/api/*` to the Docker Engine.
+- **Frontend** — a React 18 + TypeScript + Vite single-page app.
+- **Desktop app** — packaged per platform with built-in **auto-update**:
+  - **Linux** — native window (WebKitGTK), shipped as an **AppImage**.
+  - **Windows** — clean Chromium "app mode" window (Edge/Chrome), shipped as an
+    **installer `.exe`** and a **portable `.exe`**.
 
-## Run from source
+---
 
-```bash
-# 1. Build the frontend into ./public (only needed after UI changes)
-npm --prefix frontend ci
-npm --prefix frontend run build
+## 1. Which file should I download?
 
-# 2. Serve the UI and proxy to Docker on http://127.0.0.1:8420
-python3 server.py
-```
+Go to the **[latest release](https://github.com/nhanlt-FLS/docker-local-management/releases/latest)**
+and pick the file for your OS:
 
-Requirements: Docker running locally, and your user in the `docker` group
-(read/write access to `/var/run/docker.sock`).
+| Your OS | Download this | What it is |
+|---|---|---|
+| **Windows** | `docker-local-management-setup-<ver>.exe` | Installer (recommended). Run once; adds Start-menu + desktop shortcuts. |
+| **Windows** | `docker-local-management-<ver>-win64.exe` | Portable single-file app. No install; just double-click. |
+| **Linux** | `install-docker-local-management.sh` | One-file setup script (recommended). Installs deps + app + menu entry. |
+| **Linux** | `docker-local-management-<ver>-x86_64.AppImage` | The app itself, if you prefer to manage it manually. |
 
-Environment overrides: `HOST`, `PORT`, `DOCKER_SOCKET`, `PUBLIC_DIR`,
-`DF_CACHE_TTL`.
+> Not sure? **Windows → the `setup` `.exe`. Linux → the `install-...sh` script.**
 
-## Run the desktop app from source
+---
 
-```bash
-python3 -m pip install -r requirements-desktop.txt
-python3 app.py
-```
+## 2. Before you install (prerequisites)
 
-This starts the embedded server on a free port (prefers `8420`) and opens a
-native window. On Linux it renders with WebKitGTK, so ensure
-`libwebkit2gtk-4.0` (or `4.1`) is installed.
+- **Docker must be installed and running.**
+- **Linux:** your user needs access to Docker (normally membership in the
+  `docker` group). The installer script installs the two system libraries the
+  app needs (WebKitGTK and FUSE) automatically.
+- **Windows:** Docker Desktop does not expose a unix socket, so the app talks to
+  it over TCP. In Docker Desktop open
+  **Settings → General** and tick **"Expose daemon on tcp://localhost:2375 without TLS"**,
+  then **restart Docker Desktop**. (Alternatively set the `DOCKER_HOST`
+  environment variable, e.g. `tcp://localhost:2375`.)
 
-## Build the installable AppImage
+---
 
-```bash
-./build_desktop.sh
-# -> docker-local-management-<version>-<arch>.AppImage
-```
+## 3. Install & run — Windows
 
-Install it by making it executable and running it (`chmod +x *.AppImage &&
-./docker-local-management-*.AppImage`). To add it to your application menu,
-tools such as AppImageLauncher can register it automatically.
+**Installer (recommended):**
 
-## One-file installer (recommended)
+1. Download `docker-local-management-setup-<ver>.exe` and double-click it.
+2. Follow the wizard (installs per-user into `%LocalAppData%`; **no admin needed**).
+   Tick "Create a desktop icon" if you want one.
+3. Make sure the Docker Desktop TCP option above is enabled and Docker is running.
+4. Launch **Docker Local Management** from the Start menu / desktop icon
+   (or run the portable `docker-local-management-<ver>-win64.exe` directly).
 
-Each release also publishes `install-docker-local-management.sh` — a single
-setup file that does everything for you:
+The app opens a clean window (no address bar) rendered by your Edge/Chrome.
+If Windows SmartScreen warns about an unsigned app, choose **More info → Run anyway**.
+
+## 4. Install & run — Linux
+
+**One-file installer (recommended):**
 
 ```bash
 curl -fLO https://github.com/nhanlt-FLS/docker-local-management/releases/latest/download/install-docker-local-management.sh
 bash install-docker-local-management.sh
 ```
 
-It will:
+It will: install missing system deps via `apt`; install the app to
+`~/.local/share/docker-local-management/` (reusing an AppImage already in
+`~/Downloads`, else downloading the latest); add an application-menu entry +
+icon; and add a `docker-local-management` command. Then launch it from your app
+menu, or:
 
-1. install missing system dependencies (WebKitGTK for the window, FUSE to run
-   the AppImage) via `apt`,
-2. install the AppImage to `~/.local/share/docker-local-management/` — reusing
-   one already in `~/Downloads` (or passed as an argument), otherwise
-   downloading the latest release,
-3. create an application-menu launcher + icon, and
-4. add a `docker-local-management` command to `~/.local/bin`.
+```bash
+docker-local-management
+```
 
-Afterwards launch it from your app menu ("Docker Local Management") or run
-`docker-local-management`.
+**Manual (AppImage) instead:**
 
-## Windows
+```bash
+chmod +x docker-local-management-*.AppImage
+./docker-local-management-*.AppImage
+```
 
-Releases publish two Windows artifacts:
+If it complains about `libfuse.so.2`, run `sudo apt install libfuse2t64`
+(or `libfuse2` on older releases). If the window fails to open, install
+WebKitGTK: `sudo apt install libwebkit2gtk-4.1-0`.
 
-- `docker-local-management-setup-<ver>.exe` — an Inno Setup installer (per-user,
-  no admin needed). Run it once to install + create shortcuts.
-- `docker-local-management-<ver>-win64.exe` — a portable single-file executable
-  (also the asset the auto-updater downloads).
+---
 
-**Docker connection on Windows:** Docker Desktop does not expose a unix socket to
-the host, so the app talks to it over TCP. In Docker Desktop open
-**Settings → General** and enable **"Expose daemon on tcp://localhost:2375 without
-TLS"**, then restart Docker Desktop. (Or set `DOCKER_HOST=tcp://host:port`.)
+## 5. Updating the app
 
-The window is rendered by Edge/Chrome in app mode (a clean window with no address
-bar); no extra runtime is required beyond a Chromium-based browser, which Windows
-10/11 always has.
+You normally **don't need to do anything**: on launch the app checks GitHub for a
+newer release and, if found, asks whether to update.
 
-## Auto-update & releasing a new version
+- **Linux:** it downloads the new AppImage, replaces the running file and relaunches.
+- **Windows:** a running `.exe` can't be overwritten, so it downloads the new
+  `.exe` beside it and swaps + relaunches right after the app closes.
 
-The app self-updates from **GitHub Releases**:
+To update manually, just download the newest release again and reinstall/rerun.
 
-1. Bump the version in the [`VERSION`](./VERSION) file (e.g. `0.2.0`).
-2. Commit and push, then push a matching tag:
+---
 
-   ```bash
-   git commit -am "Release v0.2.0"
-   git tag v0.2.0
-   git push && git push origin v0.2.0
-   ```
+## 6. Troubleshooting
 
-3. The [`Release` workflow](./.github/workflows/release.yml) builds the AppImage
-   and publishes it as a GitHub Release (the tag must equal `VERSION`, or the
-   build fails fast).
-4. On next launch, any installed app detects the newer release, prompts the
-   user, downloads the new `.AppImage`, replaces itself and relaunches.
+| Symptom | Fix |
+|---|---|
+| Linux: `dlopen(): error loading libfuse.so.2` | `sudo apt install libfuse2t64` (or `libfuse2`) |
+| Linux: window doesn't open / WebKit missing | `sudo apt install libwebkit2gtk-4.1-0` (or `4.0`) |
+| Linux: `Docker socket not found at /var/run/docker.sock` | Start Docker; ensure your user is in the `docker` group (`sudo usermod -aG docker $USER`, then re-login) |
+| Windows: `Cannot reach Docker at tcp://127.0.0.1:2375` | Enable *"Expose daemon on tcp://localhost:2375 without TLS"* in Docker Desktop → Settings → General, then restart Docker Desktop |
+| Windows: SmartScreen warning | Unsigned app → **More info → Run anyway** |
+| Port 8420 already in use | The app automatically picks a free port; nothing to do |
 
-Update checks hit `https://api.github.com/repos/nhanlt-FLS/docker-local-management/releases/latest`
-(override the repo with the `UPDATE_REPO` env var).
+---
 
-## Project docs
+## 7. For developers
 
-See [`knowledges/`](./knowledges) for deeper maps:
+Run from source (Linux):
+
+```bash
+npm --prefix frontend ci && npm --prefix frontend run build   # build UI into ./public
+python3 server.py                                              # serve on http://127.0.0.1:8420
+# or the desktop window:
+python3 -m pip install -r requirements-desktop.txt && python3 app.py
+```
+
+Build the Linux AppImage locally: `./build_desktop.sh`.
+
+**Releasing a new version** (this also feeds auto-update):
+
+1. Bump [`VERSION`](./VERSION) (e.g. `0.3.0`).
+2. `git commit -am "Release v0.3.0" && git tag v0.3.0 && git push && git push origin v0.3.0`
+3. The [`Release` workflow](./.github/workflows/release.yml) builds **both**
+   platforms and publishes all artifacts (the tag must equal `VERSION`).
+
+Environment overrides: `HOST`, `PORT`, `DOCKER_SOCKET`, `DOCKER_HOST`,
+`PUBLIC_DIR`, `DF_CACHE_TTL`, `UPDATE_REPO`.
+
+Deeper architecture/feature maps live in [`knowledges/`](./knowledges):
 [`STRUCTURE.md`](./knowledges/STRUCTURE.md),
 [`FEATURES.md`](./knowledges/FEATURES.md),
 [`FLOWS.md`](./knowledges/FLOWS.md).
