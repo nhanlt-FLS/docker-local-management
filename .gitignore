@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Node / frontend (frontend/.gitignore also applies inside frontend/)
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Build output source maps (large, debug-only)
+public/assets/*.map
+*.js.map
+
+# PyInstaller / desktop packaging
+build/
+*.spec.bak
+*.AppImage
+*.AppImage.zsync
+appimage/
+
+# Logs & OS cruft
+*.log
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
