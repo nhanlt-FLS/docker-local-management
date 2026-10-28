@@ -30,7 +30,7 @@ docker_local_management/
 ├── desktop.spec            PyInstaller spec (onedir bundle of app.py + gi/webview)
 ├── requirements-desktop.txt  pywebview + pyinstaller (server.py stays dependency-free)
 ├── build_desktop.sh        Build frontend → PyInstaller → AppImage (used by CI too)
-├── packaging/              AppImage scaffolding: AppRun, .desktop, icon.png
+├── packaging/              AppImage scaffolding: AppRun, .desktop, icon.png, install.sh
 ├── .github/workflows/      release.yml — builds + publishes an AppImage on v* tags
 ├── knowledges/             These documentation files
 └── .qoder/skills/          Maintained architecture/feature/react maps
@@ -200,6 +200,11 @@ app.py
   (`desktop.spec`, onedir), assembles an `AppDir` (`packaging/AppRun`,
   `.desktop`, `icon.png`) and packs it with `appimagetool` (extracted, so no
   FUSE is needed in CI).
+- **One-file installer:** `packaging/install.sh` (published as
+  `install-docker-local-management.sh`) installs missing apt deps (WebKitGTK,
+  FUSE), copies/downloads the AppImage to
+  `~/.local/share/docker-local-management/`, and writes a `.desktop` launcher +
+  icon and a `~/.local/bin/docker-local-management` command.
 - **Release / auto-update loop:** pushing a `v*` tag runs
   `.github/workflows/release.yml`, which rebuilds the AppImage and attaches it
   to a GitHub Release. On next launch the running app detects the newer tag,

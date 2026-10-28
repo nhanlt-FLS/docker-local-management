@@ -52,12 +52,17 @@ jobs:
         run: |
           chmod +x build_desktop.sh
           ./build_desktop.sh
+          # Stage the one-file installer under a stable published name.
+          cp packaging/install.sh install-docker-local-management.sh
+          chmod +x install-docker-local-management.sh
         env:
           ARCH: x86_64
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
-          files: 'docker-local-management-*.AppImage'
+          files: |
+            docker-local-management-*.AppImage
+            install-docker-local-management.sh
           generate_release_notes: true
           fail_on_unmatched_files: true

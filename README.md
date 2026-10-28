@@ -50,6 +50,29 @@ Install it by making it executable and running it (`chmod +x *.AppImage &&
 ./docker-local-management-*.AppImage`). To add it to your application menu,
 tools such as AppImageLauncher can register it automatically.
 
+## One-file installer (recommended)
+
+Each release also publishes `install-docker-local-management.sh` — a single
+setup file that does everything for you:
+
+```bash
+curl -fLO https://github.com/nhanlt-FLS/docker-local-management/releases/latest/download/install-docker-local-management.sh
+bash install-docker-local-management.sh
+```
+
+It will:
+
+1. install missing system dependencies (WebKitGTK for the window, FUSE to run
+   the AppImage) via `apt`,
+2. install the AppImage to `~/.local/share/docker-local-management/` — reusing
+   one already in `~/Downloads` (or passed as an argument), otherwise
+   downloading the latest release,
+3. create an application-menu launcher + icon, and
+4. add a `docker-local-management` command to `~/.local/bin`.
+
+Afterwards launch it from your app menu ("Docker Local Management") or run
+`docker-local-management`.
+
 ## Auto-update & releasing a new version
 
 The app self-updates from **GitHub Releases**:
