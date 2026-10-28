@@ -108,6 +108,7 @@ To update manually, just download the newest release again and reinstall/rerun.
 
 | Symptom | Fix |
 |---|---|
+| Repeated `GET /api/_health ... 503`, window shows engine down | The app is running but **cannot reach Docker**. Start Docker (`sudo systemctl start docker`), ensure it's installed, and on Linux make sure your user is in the `docker` group. The app now prints the exact Docker error to the terminal. |
 | Linux: `dlopen(): error loading libfuse.so.2` | `sudo apt install libfuse2t64` (or `libfuse2`) |
 | Linux: window doesn't open / WebKit missing | `sudo apt install libwebkit2gtk-4.1-0` (or `4.0`) |
 | Linux: `Docker socket not found at /var/run/docker.sock` | Start Docker; ensure your user is in the `docker` group (`sudo usermod -aG docker $USER`, then re-login) |

@@ -28,6 +28,8 @@ import sys
 import tempfile
 import threading
 import time
+import json
+import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 
@@ -80,17 +82,30 @@ def start_server(port):
 
 
 def wait_ready(url, timeout=15.0):
-    """Block until the server answers its health endpoint (or timeout)."""
+    """Block until the server answers its health endpoint (or timeout).
+
+    Returns (ready, detail) where detail carries the Docker error reported by
+    /api/_health when it is not ready, so we can show an actionable message.
+    """
     deadline = time.time() + timeout
     health = url + "/api/_health"
+    detail = ""
     while time.time() < deadline:
         try:
             with urllib.request.urlopen(health, timeout=2) as resp:
                 if resp.status == 200:
-                    return True
+                    return True, ""
+        except urllib.error.HTTPError as exc:
+            # The server is up but Docker is not reachable; surface the reason.
+            try:
+                body = json.loads(exc.read().decode("utf-8", "replace"))
+                detail = body.get("error") or detail
+            except Exception:
+                detail = str(exc)
+            time.sleep(0.5)
         except Exception:
-            time.sleep(0.15)
-    return False
+            time.sleep(0.5)
+    return False, detail
 
 
 class Api:
@@ -229,8 +244,16 @@ def main():
     url = "http://127.0.0.1:%d" % port
     print("%s %s" % (APP_NAME, version))
     print("  UI: %s" % url)
-    if not wait_ready(url):
-        print("Warning: server did not report healthy in time", file=sys.stderr)
+    ready, detail = wait_ready(url)
+    if not ready:
+        print("Warning: the embedded server cannot reach the Docker engine.",
+              file=sys.stderr)
+        if detail:
+            print("  Docker said: %s" % detail, file=sys.stderr)
+        print("  Check that Docker is installed and running, and that your user",
+              file=sys.stderr)
+        print("  can access it (on Linux: member of the 'docker' group).", file=sys.stderr)
+        print("  The window will still open and show the engine as down.", file=sys.stderr)
 
     try:
         if IS_WINDOWS:
@@ -242,4 +265,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nInterrupted; shutting down.")
+        sys.exit(130)
