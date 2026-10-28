@@ -62,6 +62,10 @@ jobs:
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
+          # Releases live in the public binaries-only repo; this source repo
+          # stays private, so no raw source is ever published.
+          repository: nhanlt-FLS/docker-local-management-dist
+          token: ${{ secrets.DIST_RELEASE_TOKEN }}
           files: |
             docker-local-management-*.AppImage
             install-docker-local-management.sh
@@ -132,6 +136,8 @@ jobs:
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
+          repository: nhanlt-FLS/docker-local-management-dist
+          token: ${{ secrets.DIST_RELEASE_TOKEN }}
           files: |
             docker-local-management-*-win64.exe
             docker-local-management-setup-*.exe

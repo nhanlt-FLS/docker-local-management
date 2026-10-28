@@ -17,7 +17,7 @@
 set -euo pipefail
 
 APP_NAME="docker-local-management"
-REPO="${UPDATE_REPO:-nhanlt-FLS/docker-local-management}"
+REPO="${UPDATE_REPO:-nhanlt-FLS/docker-local-management-dist}"
 INSTALL_DIR="$HOME/.local/share/$APP_NAME"
 APPIMAGE_PATH="$INSTALL_DIR/$APP_NAME.AppImage"
 BIN_DIR="$HOME/.local/bin"

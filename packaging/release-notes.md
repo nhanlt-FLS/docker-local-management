@@ -22,4 +22,5 @@ repository snapshot — you do not need them to run the app.
 Installed apps check for a newer release on launch and offer to update
 themselves — normally you never need to download again.
 
-Full guide (install, run, troubleshooting): see the README in the repository.
+Full guide (install, run, troubleshooting): see the repository README linked at
+the top of this page.

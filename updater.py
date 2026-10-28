@@ -21,7 +21,7 @@ import urllib.request
 
 # Repository that publishes the releases. Kept in one place so it is easy to
 # change if the project is ever moved to another account.
-REPO = os.environ.get("UPDATE_REPO", "nhanlt-FLS/docker-local-management")
+REPO = os.environ.get("UPDATE_REPO", "nhanlt-FLS/docker-local-management-dist")
 API_URL = "https://api.github.com/repos/%s/releases/latest" % REPO
 USER_AGENT = "docker-local-management-updater"
 

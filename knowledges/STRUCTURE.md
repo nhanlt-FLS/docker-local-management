@@ -209,7 +209,11 @@ app.py
   icon and a `~/.local/bin/docker-local-management` command.
 - **Release / auto-update loop:** pushing a `v*` tag runs
   `.github/workflows/release.yml`, which rebuilds the AppImage and attaches it
-  to a GitHub Release. On next launch the running app detects the newer tag,
+  to a GitHub Release. Releases are published to the separate public
+  binaries-only repo `nhanlt-FLS/docker-local-management-dist` (cross-repo via
+  `secrets.DIST_RELEASE_TOKEN`), so this source repository stays private and no
+  raw source is ever published; `updater.py` and `packaging/install.sh` default
+  to that dist repo. On next launch the running app detects the newer tag,
   downloads the new `.AppImage`, atomically replaces the file at `$APPIMAGE`
   and re-execs itself. The tag must equal the `VERSION` file or CI fails fast.
 - **Runtime requirement:** the target machine needs WebKitGTK
