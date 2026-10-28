@@ -65,7 +65,8 @@ jobs:
           files: |
             docker-local-management-*.AppImage
             install-docker-local-management.sh
-          generate_release_notes: true
+          # Explains which asset is for which OS / which is the one-file setup.
+          body_path: packaging/release-notes.md
           fail_on_unmatched_files: true
 
   # ---------------------------------------------------------------- Windows --

@@ -30,7 +30,9 @@ docker_local_management/
 ├── desktop.spec            PyInstaller spec (onedir bundle of app.py + gi/webview)
 ├── requirements-desktop.txt  pywebview + pyinstaller (server.py stays dependency-free)
 ├── build_desktop.sh        Build frontend → PyInstaller → AppImage (used by CI too)
-├── packaging/              AppImage scaffolding: AppRun, .desktop, icon.png, install.sh
+├── packaging/              AppImage scaffolding + installers: AppRun, .desktop,
+│                           icon.png, install.sh, windows-installer.iss,
+│                           release-notes.md (release-page asset guide)
 ├── .github/workflows/      release.yml — builds + publishes an AppImage on v* tags
 ├── knowledges/             These documentation files
 └── .qoder/skills/          Maintained architecture/feature/react maps
@@ -235,3 +237,6 @@ app.py
   the portable exe and an Inno Setup installer
   (`packaging/windows-installer.iss`, per-user install into `%LocalAppData%` so
   self-update needs no admin), publishing both alongside the Linux AppImage.
+  The Linux publish step sets the release body from
+  `packaging/release-notes.md`, which documents which asset is for which OS and
+  which one is the one-file setup.
