@@ -131,12 +131,26 @@ python3 -m pip install -r requirements-desktop.txt && python3 app.py
 
 Build the Linux AppImage locally: `./build_desktop.sh`.
 
+**Branches:** `main` is the development branch — what you run locally and add
+features on. `deploy` is the release branch: it only ever receives merges from
+`main`, and CI refuses to build a release tag cut anywhere else, so shipped
+builds stay clean and separate from work-in-progress.
+
 **Releasing a new version** (this also feeds auto-update):
 
-1. Bump [`VERSION`](./VERSION) (e.g. `0.3.0`).
-2. `git commit -am "Release v0.3.0" && git tag v0.3.0 && git push && git push origin v0.3.0`
+1. On `main`: bump [`VERSION`](./VERSION) (e.g. `0.3.0`) and commit your work.
+2. Move it to the release branch and tag there:
+
+   ```bash
+   git checkout deploy && git merge main
+   git tag v0.3.0
+   git push origin deploy v0.3.0
+   git checkout main
+   ```
+
 3. The [`Release` workflow](./.github/workflows/release.yml) builds **both**
-   platforms and publishes all artifacts (the tag must equal `VERSION`).
+   platforms and publishes all artifacts (the tag must equal `VERSION` **and**
+   sit at the tip of `deploy`, or CI fails fast).
 
 Environment overrides: `HOST`, `PORT`, `DOCKER_SOCKET`, `DOCKER_HOST`,
 `PUBLIC_DIR`, `DF_CACHE_TTL`, `UPDATE_REPO`.

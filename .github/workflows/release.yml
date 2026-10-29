@@ -29,6 +29,18 @@ jobs:
           fi
           echo "Building version $TAG"
 
+      - name: Verify tag was cut from the deploy branch
+        run: |
+          # Releases ship only from the release branch; feature work on main
+          # must be merged into deploy before tagging.
+          git fetch --depth=1 origin deploy
+          DEPLOY_SHA="$(git rev-parse origin/deploy)"
+          if [ "$GITHUB_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME is not at the tip of origin/deploy ($DEPLOY_SHA)."
+            echo "::error::Merge main into deploy and tag there."
+            exit 1
+          fi
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -87,6 +99,16 @@ jobs:
             exit 1
           }
           "APP_VERSION=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Verify tag was cut from the deploy branch
+        shell: pwsh
+        run: |
+          git fetch --depth=1 origin deploy
+          $deploy = git rev-parse origin/deploy
+          if ($env:GITHUB_SHA -ne $deploy) {
+            Write-Error "Tag $env:GITHUB_REF_NAME is not at the tip of origin/deploy; merge main into deploy and tag there"
+            exit 1
+          }
 
       - name: Set up Node
         uses: actions/setup-node@v4

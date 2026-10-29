@@ -209,7 +209,10 @@ app.py
   icon and a `~/.local/bin/docker-local-management` command.
 - **Release / auto-update loop:** pushing a `v*` tag runs
   `.github/workflows/release.yml`, which rebuilds the AppImage and attaches it
-  to a GitHub Release. On next launch the running app detects the newer tag,
+  to a GitHub Release. Branch model: `main` is development (local runs,
+  feature work); `deploy` is the merge-only release branch and CI verifies the
+  tag SHA equals the tip of `origin/deploy`, so releases never ship
+  work-in-progress. On next launch the running app detects the newer tag,
   downloads the new `.AppImage`, atomically replaces the file at `$APPIMAGE`
   and re-execs itself. The tag must equal the `VERSION` file or CI fails fast.
 - **Runtime requirement:** the target machine needs WebKitGTK
