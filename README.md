@@ -17,7 +17,7 @@ stop, prune and inspect everything — all against your local Docker engine.
 
 ## 1. Which file should I download?
 
-Go to the **[latest release](https://github.com/nhanlt-FLS/docker-local-management-dist/releases/latest)**
+Go to the **[latest release](https://github.com/nhanlt-FLS/docker-local-management/releases/latest)**
 and pick the file for your OS:
 
 | Your OS | Download this | What it is |
@@ -64,7 +64,7 @@ If Windows SmartScreen warns about an unsigned app, choose **More info → Run a
 **One-file installer (recommended):**
 
 ```bash
-curl -fLO https://github.com/nhanlt-FLS/docker-local-management-dist/releases/latest/download/install-docker-local-management.sh
+curl -fLO https://github.com/nhanlt-FLS/docker-local-management/releases/latest/download/install-docker-local-management.sh
 bash install-docker-local-management.sh
 ```
 
