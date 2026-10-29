@@ -7,7 +7,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UNIT_DIR="$HOME/.config/systemd/user"
 
 mkdir -p "$UNIT_DIR"
-cp "$REPO_DIR/deploy/docker-local-management.service" "$UNIT_DIR/docker-local-management.service"
+cp "$REPO_DIR/systemd/docker-local-management.service" "$UNIT_DIR/docker-local-management.service"
 
 systemctl --user daemon-reload
 systemctl --user enable --now docker-local-management.service
