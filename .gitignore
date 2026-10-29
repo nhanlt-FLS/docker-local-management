@@ -38,3 +38,7 @@ Thumbs.db
 # Editor
 .idea/
 .vscode/
+
+# Local-only docs & agent config (kept on disk, not in the repo)
+knowledges/
+.qoder/
