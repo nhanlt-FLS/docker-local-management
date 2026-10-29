@@ -19,14 +19,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify tag matches VERSION file
+      - name: Stamp VERSION from the tag
         run: |
-          FILE_VERSION="$(tr -d '[:space:]' < VERSION)"
+          # The tag is the source of truth: CI writes it into VERSION so the
+          # bundled app reports exactly the released version (no manual bump).
           TAG="${GITHUB_REF_NAME#v}"
-          if [ "$FILE_VERSION" != "$TAG" ]; then
-            echo "::error::VERSION ($FILE_VERSION) does not match pushed tag ($TAG)"
-            exit 1
-          fi
+          echo "$TAG" > VERSION
           echo "Building version $TAG"
 
       - name: Verify tag was cut from the deploy branch
@@ -89,15 +87,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify tag matches VERSION file
+      - name: Stamp VERSION from the tag
         shell: pwsh
         run: |
-          $file = (Get-Content VERSION -Raw).Trim()
-          $tag  = "${{ github.ref_name }}" -replace '^v',''
-          if ($file -ne $tag) {
-            Write-Error "VERSION ($file) does not match pushed tag ($tag)"
-            exit 1
-          }
+          # The tag is the source of truth: CI writes it into VERSION so the
+          # bundled app reports exactly the released version (no manual bump).
+          $tag = "${{ github.ref_name }}" -replace '^v',''
+          Set-Content -Path VERSION -Value $tag -NoNewline
           "APP_VERSION=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Verify tag was cut from the deploy branch

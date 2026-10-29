@@ -138,7 +138,8 @@ builds stay clean and separate from work-in-progress.
 
 **Releasing a new version** (this also feeds auto-update):
 
-1. On `main`: bump [`VERSION`](./VERSION) (e.g. `0.3.0`) and commit your work.
+1. On `main`: commit your work. **No version bump needed** — the tag *is* the
+   version; CI stamps it into the `VERSION` file during the build.
 2. Move it to the release branch and tag there:
 
    ```bash
@@ -149,8 +150,8 @@ builds stay clean and separate from work-in-progress.
    ```
 
 3. The [`Release` workflow](./.github/workflows/release.yml) builds **both**
-   platforms and publishes all artifacts (the tag must equal `VERSION` **and**
-   sit at the tip of `deploy`, or CI fails fast).
+   platforms and publishes all artifacts (the tag must sit at the tip of
+   `deploy`, or CI fails fast).
 
 Environment overrides: `HOST`, `PORT`, `DOCKER_SOCKET`, `DOCKER_HOST`,
 `PUBLIC_DIR`, `DF_CACHE_TTL`, `UPDATE_REPO`.
